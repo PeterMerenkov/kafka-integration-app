@@ -59,3 +59,16 @@ app:
         max-poll-interval-ms: 300000
         max-poll-records: 500
         log-events: false
+    legacy:
+      alpha:
+        topic: legacy-a-topic
+        group-id: legacy-a-group
+        concurrency: 1
+      beta:
+        topic: legacy-b-topic
+        group-id: legacy-b-group
+        concurrency: 1
+      gamma:
+        topic: legacy-c-topic
+        group-id: legacy-c-group
+        concurrency: 1
