@@ -13,7 +13,7 @@ import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.test.context.EmbeddedKafka;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.kafka.consumers.order-paid.auto-offset-reset=earliest")
 @EmbeddedKafka(
         partitions = 2,
         topics = {

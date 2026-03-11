@@ -3,6 +3,8 @@ package com.example.kafkaintegration.consumer;
 import com.example.kafkaintegration.config.KafkaConsumerProperties;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -12,9 +14,7 @@ import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.BeanCreationException;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.SmartLifecycle;
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.listener.AcknowledgingMessageListener;
@@ -26,8 +26,7 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 @RequiredArgsConstructor
-@ConditionalOnProperty(name = "app.kafka.consumers-enabled", havingValue = "true", matchIfMissing = true)
-public class CustomKafkaConsumerRegistrar implements SmartLifecycle {
+public class KafkaConsumerRegistrationService {
 
     private final List<CustomKafkaConsumer<?, ?>> consumers;
     private final ApplicationContext context;
@@ -35,30 +34,51 @@ public class CustomKafkaConsumerRegistrar implements SmartLifecycle {
     private final ObjectMapper objectMapper;
 
     private final List<ConcurrentMessageListenerContainer<String, String>> containers = new ArrayList<>();
-    private volatile boolean running;
+    private volatile Instant lastRegistrationStartAt;
+    private volatile Instant lastRegistrationFinishedAt;
 
-    @Override
-    public void start() {
-        if (running) {
-            return;
-        }
-        registerAllConsumers();
-        running = true;
-    }
-
-    private void registerAllConsumers() {
+    public void startAll() {
+        Instant start = Instant.now();
+        lastRegistrationStartAt = start;
+        log.info("Kafka consumer registration started at {}", start);
         for (CustomKafkaConsumer<?, ?> consumer : consumers) {
             registerConsumer(consumer);
         }
+        lastRegistrationFinishedAt = Instant.now();
+        Duration duration = Duration.between(start, lastRegistrationFinishedAt);
+        log.info("Kafka consumer registration finished in {} ms", duration.toMillis());
+    }
+
+    public void stopAll() {
+        for (ConcurrentMessageListenerContainer<String, String> container : containers) {
+            if (container.isRunning()) {
+                container.stop();
+            }
+        }
+        containers.clear();
+    }
+
+    public Instant getLastRegistrationStartAt() {
+        return lastRegistrationStartAt;
+    }
+
+    public Instant getLastRegistrationFinishedAt() {
+        return lastRegistrationFinishedAt;
     }
 
     private void registerConsumer(CustomKafkaConsumer<?, ?> consumer) {
         Class<?> targetClass = AopUtils.getTargetClass(consumer);
+        Instant start = Instant.now();
+        log.info("Registering Kafka consumer '{}' at {}", targetClass.getSimpleName(), start);
+
         ResolvedTypes types = resolveTypes(targetClass);
         KafkaConsumerProperties config = context.getBean(types.configType());
         ContainerProperties containerProperties = buildContainerProperties(consumer, types, config);
         ConcurrentMessageListenerContainer<String, String> container = createContainer(targetClass, config, containerProperties);
         startContainerIfNeeded(container, config);
+
+        Duration duration = Duration.between(start, Instant.now());
+        log.info("Kafka consumer '{}' registered in {} ms", targetClass.getSimpleName(), duration.toMillis());
     }
 
     private ContainerProperties buildContainerProperties(
@@ -178,22 +198,6 @@ public class CustomKafkaConsumerRegistrar implements SmartLifecycle {
 
         JavaType payloadJavaType = objectMapper.getTypeFactory().constructType(payloadType.getType());
         return new ResolvedTypes(payloadJavaType, (Class<? extends KafkaConsumerProperties>) configClass);
-    }
-
-    @Override
-    public void stop() {
-        for (ConcurrentMessageListenerContainer<String, String> container : containers) {
-            if (container.isRunning()) {
-                container.stop();
-            }
-        }
-        containers.clear();
-        running = false;
-    }
-
-    @Override
-    public boolean isRunning() {
-        return running;
     }
 
     private record ResolvedTypes(JavaType payloadType, Class<? extends KafkaConsumerProperties> configType) {

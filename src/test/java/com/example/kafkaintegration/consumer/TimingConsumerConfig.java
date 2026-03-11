@@ -1,13 +1,16 @@
-package com.example.kafkaintegration.config;
+package com.example.kafkaintegration.consumer;
 
+import com.example.kafkaintegration.config.KafkaConsumerProperties;
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 @Data
 @Configuration
-@ConfigurationProperties(prefix = "app.kafka.consumers.inventory-adjusted")
-public class InventoryAdjustedConsumerConfig implements KafkaConsumerProperties {
+@Profile("timing")
+@ConfigurationProperties(prefix = "app.kafka.consumers.timing")
+public class TimingConsumerConfig implements KafkaConsumerProperties {
 
     private String topic;
     private String groupId;
