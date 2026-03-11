@@ -35,7 +35,7 @@ abstract class AbstractLifecycleTimingTest {
     private KafkaTemplate<String, String> kafkaTemplate;
 
     @Autowired
-    private KafkaConsumerRegistrationService registrationService;
+    private RegistrationTimingProbe timingProbe;
 
     @BeforeEach
     void resetLatch() {
@@ -44,8 +44,8 @@ abstract class AbstractLifecycleTimingTest {
 
     @Test
     void shouldMeasureRegistrationAndFirstConsume() throws Exception {
-        Instant start = registrationService.getLastRegistrationStartAt();
-        Instant finish = registrationService.getLastRegistrationFinishedAt();
+        Instant start = timingProbe.getRegistrationStartAt();
+        Instant finish = timingProbe.getRegistrationFinishedAt();
 
         assertThat(start).as("registration start time").isNotNull();
         assertThat(finish).as("registration finish time").isNotNull();

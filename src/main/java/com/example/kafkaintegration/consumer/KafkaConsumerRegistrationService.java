@@ -3,13 +3,11 @@ package com.example.kafkaintegration.consumer;
 import com.example.kafkaintegration.config.KafkaConsumerProperties;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import lombok.SneakyThrows;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.aop.support.AopUtils;
@@ -17,14 +15,12 @@ import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.ResolvableType;
 import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.AcknowledgingMessageListener;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.support.Acknowledgment;
-import org.springframework.stereotype.Component;
+import org.springframework.kafka.listener.MessageListener;
+import org.springframework.stereotype.Service;
 
-@Component
-@Slf4j
+@Service
 @RequiredArgsConstructor
 public class KafkaConsumerRegistrationService {
 
@@ -34,19 +30,11 @@ public class KafkaConsumerRegistrationService {
     private final ObjectMapper objectMapper;
 
     private final List<ConcurrentMessageListenerContainer<String, String>> containers = new ArrayList<>();
-    private volatile Instant lastRegistrationStartAt;
-    private volatile Instant lastRegistrationFinishedAt;
 
     public void startAll() {
-        Instant start = Instant.now();
-        lastRegistrationStartAt = start;
-        log.info("Kafka consumer registration started at {}", start);
         for (CustomKafkaConsumer<?, ?> consumer : consumers) {
             registerConsumer(consumer);
         }
-        lastRegistrationFinishedAt = Instant.now();
-        Duration duration = Duration.between(start, lastRegistrationFinishedAt);
-        log.info("Kafka consumer registration finished in {} ms", duration.toMillis());
     }
 
     public void stopAll() {
@@ -58,27 +46,14 @@ public class KafkaConsumerRegistrationService {
         containers.clear();
     }
 
-    public Instant getLastRegistrationStartAt() {
-        return lastRegistrationStartAt;
-    }
-
-    public Instant getLastRegistrationFinishedAt() {
-        return lastRegistrationFinishedAt;
-    }
-
     private void registerConsumer(CustomKafkaConsumer<?, ?> consumer) {
         Class<?> targetClass = AopUtils.getTargetClass(consumer);
-        Instant start = Instant.now();
-        log.info("Registering Kafka consumer '{}' at {}", targetClass.getSimpleName(), start);
 
         ResolvedTypes types = resolveTypes(targetClass);
         KafkaConsumerProperties config = context.getBean(types.configType());
         ContainerProperties containerProperties = buildContainerProperties(consumer, types, config);
         ConcurrentMessageListenerContainer<String, String> container = createContainer(targetClass, config, containerProperties);
         startContainerIfNeeded(container, config);
-
-        Duration duration = Duration.between(start, Instant.now());
-        log.info("Kafka consumer '{}' registered in {} ms", targetClass.getSimpleName(), duration.toMillis());
     }
 
     private ContainerProperties buildContainerProperties(
@@ -90,10 +65,10 @@ public class KafkaConsumerRegistrationService {
         containerProperties.setGroupId(config.getGroupId());
         containerProperties.setKafkaConsumerProperties(kafkaOverrides(config));
         if (!config.isEnableAutoCommit()) {
-            containerProperties.setAckMode(ContainerProperties.AckMode.MANUAL);
+            containerProperties.setAckMode(ContainerProperties.AckMode.RECORD);
         }
-        containerProperties.setMessageListener((AcknowledgingMessageListener<String, String>) (record, acknowledgment) ->
-                handleRecord(consumer, types.payloadType(), config, record, acknowledgment));
+        containerProperties.setMessageListener((MessageListener<String, String>) record ->
+                handleRecord(consumer, types.payloadType(), record));
         return containerProperties;
     }
 
@@ -131,56 +106,18 @@ public class KafkaConsumerRegistrationService {
     private <T> void handleRecord(
             CustomKafkaConsumer<T, ?> consumer,
             JavaType payloadType,
-            KafkaConsumerProperties config,
-            ConsumerRecord<String, String> record,
-            Acknowledgment acknowledgment
+            ConsumerRecord<String, String> record
     ) {
-        try {
-            T payload = (T) deserialize(record.value(), payloadType);
-            if (config.isLogEvents()) {
-                logEvent(record, payload);
-            }
-            consumer.handle(payload);
-            if (!config.isEnableAutoCommit() && acknowledgment != null) {
-                acknowledgment.acknowledge();
-            }
-        } catch (Exception e) {
-            logProcessingError(consumer, record, e);
-        }
+        T payload = (T) deserialize(record.value(), payloadType);
+        consumer.handle(payload);
     }
 
-    private Object deserialize(String value, JavaType payloadType) throws Exception {
+    @SneakyThrows
+    private Object deserialize(String value, JavaType payloadType) {
         if (payloadType.getRawClass().equals(String.class)) {
             return value;
         }
         return objectMapper.readValue(value, payloadType);
-    }
-
-    private void logEvent(ConsumerRecord<String, String> record, Object payload) {
-        String preview = payload == null ? "null" : payload.toString();
-        if (preview.length() > 200) {
-            preview = preview.substring(0, 200) + "...";
-        }
-        log.info(
-                "Kafka event topic='{}' partition={} offset={} key='{}' payload='{}'",
-                record.topic(),
-                record.partition(),
-                record.offset(),
-                record.key(),
-                preview
-        );
-    }
-
-    private void logProcessingError(CustomKafkaConsumer<?, ?> consumer, ConsumerRecord<String, String> record, Exception e) {
-        log.error(
-                "Consumer '{}' failed for topic='{}' partition={} offset={} key='{}'.",
-                consumer.getClass().getSimpleName(),
-                record.topic(),
-                record.partition(),
-                record.offset(),
-                record.key(),
-                e
-        );
     }
 
     private ResolvedTypes resolveTypes(Class<?> targetClass) {

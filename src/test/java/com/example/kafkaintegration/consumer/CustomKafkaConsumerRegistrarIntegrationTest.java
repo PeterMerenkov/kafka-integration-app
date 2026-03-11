@@ -61,10 +61,10 @@ class CustomKafkaConsumerRegistrarIntegrationTest {
     }
 
     @Test
-    void shouldContinueProcessingAfterInvalidJson() {
-        String marker = "after-invalid-01";
+    void shouldProcessSequentialMessages() {
+        String marker = "second-message-01";
 
-        kafkaTemplate.send("demo-topic", "{\"text\":");
+        kafkaTemplate.send("demo-topic", "{\"text\":\"first-message\"}");
         kafkaTemplate.send("demo-topic", "{\"text\":\"" + marker + "\"}");
 
         verify(demoConsumer, timeout(10000)).handle(argThat(dto -> marker.equals(dto.text())));

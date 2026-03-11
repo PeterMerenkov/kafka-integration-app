@@ -26,24 +26,19 @@ class CustomKafkaConsumerLogEventsIntegrationTest {
     private KafkaTemplate<String, String> kafkaTemplate;
 
     @Test
-    void shouldLogEventsWhenEnabled(CapturedOutput output) {
+    void shouldNotLogEventsWithoutAspect(CapturedOutput output) {
         String key = "log-key-1";
-        String marker = "log-event-01";
-
-        kafkaTemplate.send("demo-topic", key, "{\"text\":\"" + marker + "\"}");
+        kafkaTemplate.send("demo-topic", key, "{\"text\":\"log-event-01\"}");
 
         String expectedTopic = "Kafka event topic='demo-topic'";
-        String expectedKey = "key='" + key + "'";
-        waitForLog(output, expectedTopic, expectedKey, marker);
+        waitForNoLog(output, expectedTopic);
     }
 
-    private void waitForLog(CapturedOutput output, String expectedTopic, String expectedKey, String marker) {
+    private void waitForNoLog(CapturedOutput output, String expectedTopic) {
         long deadline = System.nanoTime() + java.util.concurrent.TimeUnit.SECONDS.toNanos(5);
         while (System.nanoTime() < deadline) {
             String out = output.getOut();
-            if (out.contains(expectedTopic) && out.contains(expectedKey) && out.contains(marker)) {
-                return;
-            }
+            assertThat(out).doesNotContain(expectedTopic);
             try {
                 Thread.sleep(100);
             } catch (InterruptedException ex) {
@@ -51,10 +46,5 @@ class CustomKafkaConsumerLogEventsIntegrationTest {
                 break;
             }
         }
-
-        assertThat(output.getOut())
-                .contains(expectedTopic)
-                .contains(expectedKey)
-                .contains(marker);
     }
 }

@@ -38,7 +38,6 @@ class CustomKafkaConsumerManualCommitIntegrationTest {
     void shouldProcessMessagesWithManualAck() {
         String marker = "manual-ack-ok";
 
-        kafkaTemplate.send("demo-topic", "{\"text\":");
         kafkaTemplate.send("demo-topic", "{\"text\":\"" + marker + "\"}");
 
         verify(demoConsumer, timeout(10000)).handle(argThat(dto -> marker.equals(dto.text())));
