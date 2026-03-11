@@ -1,33 +1,42 @@
 package com.example.kafkaintegration.consumer;
 
 import com.example.kafkaintegration.config.KafkaConsumerProperties;
+import com.example.kafkaintegration.config.KafkaDefaultProps;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-import java.util.Properties;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
-import org.apache.kafka.clients.consumer.ConsumerConfig;
-import org.apache.kafka.clients.consumer.ConsumerRecord;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.consumer.*;
+import org.apache.kafka.clients.CommonClientConfigs;
+import org.apache.kafka.common.config.SslConfigs;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.aop.support.AopUtils;
 import org.springframework.beans.factory.BeanCreationException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.core.ResolvableType;
-import org.springframework.kafka.core.ConsumerFactory;
-import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
-import org.springframework.kafka.listener.ContainerProperties;
-import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.listener.*;
+import org.springframework.kafka.support.serializer.ErrorHandlingDeserializer;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class KafkaConsumerRegistrationService {
 
     private final List<CustomKafkaConsumer<?, ?>> consumers;
     private final ApplicationContext context;
-    private final ConsumerFactory<String, String> consumerFactory;
     private final ObjectMapper objectMapper;
+    private final KafkaDefaultProps defaultProps;
+
+    private final Logger EVENTS_LOGGER = LoggerFactory.getLogger("kafka-events");
 
     private final List<ConcurrentMessageListenerContainer<String, String>> containers = new ArrayList<>();
 
@@ -62,8 +71,6 @@ public class KafkaConsumerRegistrationService {
             KafkaConsumerProperties config
     ) {
         ContainerProperties containerProperties = new ContainerProperties(config.getTopic());
-        containerProperties.setGroupId(config.getGroupId());
-        containerProperties.setKafkaConsumerProperties(kafkaOverrides(config));
         if (!config.isEnableAutoCommit()) {
             containerProperties.setAckMode(ContainerProperties.AckMode.RECORD);
         }
@@ -77,11 +84,28 @@ public class KafkaConsumerRegistrationService {
             KafkaConsumerProperties config,
             ContainerProperties containerProperties
     ) {
+        DefaultKafkaConsumerFactory<String, String> consumerFactory =
+                new DefaultKafkaConsumerFactory<>(buildConsumerFactoryConfig(config),
+                        new ErrorHandlingDeserializer<>(new StringDeserializer()),
+                        new ErrorHandlingDeserializer<>(new StringDeserializer())); // TODO LoggingProxyJsonDeserializer
         ConcurrentMessageListenerContainer<String, String> container =
                 new ConcurrentMessageListenerContainer<>(consumerFactory, containerProperties);
         container.setBeanName("dynamic-kafka-consumer-" + targetClass.getSimpleName());
         container.setConcurrency(config.getConcurrency());
         container.setAutoStartup(config.isAutoStartup());
+        container.setCommonErrorHandler(new CommonLoggingErrorHandler());
+        container.setRecordInterceptor(new RecordInterceptor<>() {
+            @Override
+            public ConsumerRecord<String, String> intercept(ConsumerRecord<String, String> record, Consumer<String, String> consumer) {
+                EVENTS_LOGGER.debug("Incoming: {}", record.value()); // TODO LogHelper
+                return record;
+            }
+
+            @Override
+            public void failure(ConsumerRecord<String, String> record, Exception exception, Consumer<String, String> consumer) {
+                log.error("Error consuming event: record {}", record, exception); // TODO LogHelper
+            }
+        });
         containers.add(container);
         return container;
     }
@@ -92,14 +116,39 @@ public class KafkaConsumerRegistrationService {
         }
     }
 
-    private Properties kafkaOverrides(KafkaConsumerProperties config) {
-        Properties overrides = new Properties();
-        overrides.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.getAutoOffsetReset());
-        overrides.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, Boolean.toString(config.isEnableAutoCommit()));
-        overrides.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, Integer.toString(config.getAutoCommitIntervalMs()));
-        overrides.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, Integer.toString(config.getMaxPollIntervalMs()));
-        overrides.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, Integer.toString(config.getMaxPollRecords()));
-        return overrides;
+    private Map<String, Object> buildConsumerFactoryConfig(KafkaConsumerProperties config) {
+        Map<String, Object> consumerFactoryConfig = new HashMap<>();
+        consumerFactoryConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
+                String.join(",", defaultProps.getBootstrapServers()));
+        consumerFactoryConfig.put(ConsumerConfig.GROUP_ID_CONFIG, config.getGroupId());
+        consumerFactoryConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, config.isEnableAutoCommit());
+        consumerFactoryConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.getAutoOffsetReset());
+        consumerFactoryConfig.put(ConsumerConfig.AUTO_COMMIT_INTERVAL_MS_CONFIG, config.getAutoCommitIntervalMs());
+        consumerFactoryConfig.put(ConsumerConfig.MAX_POLL_INTERVAL_MS_CONFIG, config.getMaxPollIntervalMs());
+        consumerFactoryConfig.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, config.getMaxPollRecords());
+
+        consumerFactoryConfig.put(ConsumerConfig.PARTITION_ASSIGNMENT_STRATEGY_CONFIG,
+                RoundRobinAssignor.class.getName());
+
+        putSslProps(consumerFactoryConfig);
+        return consumerFactoryConfig;
+    }
+
+    private void putSslProps(Map<String, Object> consumerFactoryConfig) {
+        KafkaDefaultProps.SslProps ssl = defaultProps.getSsl();
+        if (ssl == null) {
+            return;
+        }
+        consumerFactoryConfig.put(CommonClientConfigs.SECURITY_PROTOCOL_CONFIG, ssl.getSecurityProtocol());
+        consumerFactoryConfig.put(SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG, "");
+
+        consumerFactoryConfig.put(SslConfigs.SSL_KEYSTORE_TYPE_CONFIG, ssl.getKeystoreType());
+        consumerFactoryConfig.put(SslConfigs.SSL_KEYSTORE_LOCATION_CONFIG, ssl.getKeystoreLocation());
+        consumerFactoryConfig.put(SslConfigs.SSL_KEYSTORE_PASSWORD_CONFIG, ssl.getKeystorePassword());
+
+        consumerFactoryConfig.put(SslConfigs.SSL_TRUSTSTORE_TYPE_CONFIG, ssl.getTruststoreType());
+        consumerFactoryConfig.put(SslConfigs.SSL_TRUSTSTORE_LOCATION_CONFIG, ssl.getTruststoreLocation());
+        consumerFactoryConfig.put(SslConfigs.SSL_TRUSTSTORE_PASSWORD_CONFIG, ssl.getTruststorePassword());
     }
 
     @SuppressWarnings("unchecked")

@@ -24,7 +24,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
         },
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
-class CustomKafkaConsumerRegistrarIntegrationTest {
+class CustomKafkaConsumerPropsRegistrarIntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;

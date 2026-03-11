@@ -1,22 +1,11 @@
 package com.example.kafkaintegration.config;
 
-import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.validation.annotation.Validated;
 
-@Data
+@Validated
 @Configuration
 @ConfigurationProperties(prefix = "app.kafka.consumers.inventory-adjusted")
-public class InventoryAdjustedConsumerConfig implements KafkaConsumerProperties {
-
-    private String topic;
-    private String groupId;
-    private int concurrency;
-    private String autoOffsetReset;
-    private boolean autoStartup;
-    private boolean enableAutoCommit;
-    private int autoCommitIntervalMs;
-    private int maxPollIntervalMs;
-    private int maxPollRecords;
-    private boolean logEvents;
+public class InventoryAdjustedConsumerConfig extends AbstractKafkaConsumerConfig {
 }

@@ -20,7 +20,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
         bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 @ExtendWith(OutputCaptureExtension.class)
-class CustomKafkaConsumerLogEventsIntegrationTest {
+class CustomKafkaConsumerPropsLogEventsIntegrationTest {
 
     @Autowired
     private KafkaTemplate<String, String> kafkaTemplate;
