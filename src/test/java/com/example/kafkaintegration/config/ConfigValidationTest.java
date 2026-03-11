@@ -1,0 +1,122 @@
+package com.example.kafkaintegration.config;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.example.kafkaintegration.KafkaIntegrationApplication;
+import java.util.ArrayList;
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.bind.validation.BindValidationException;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
+import org.springframework.validation.FieldError;
+
+class ConfigValidationTest {
+
+    private final ApplicationContextRunner contextRunner =
+            new ApplicationContextRunner().withUserConfiguration(KafkaIntegrationApplication.class);
+
+    @Test
+    void shouldFailWhenDefaultsGroupIdMissing() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.defaults.group-id=kafka-integration-group");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "groupId");
+                });
+    }
+
+    @Test
+    void shouldFailWhenDefaultsAutoOffsetResetMissing() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.defaults.auto-offset-reset=earliest");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "autoOffsetReset");
+                });
+    }
+
+    @Test
+    void shouldFailWhenDefaultsConcurrencyNonPositive() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.defaults.concurrency=1");
+        props.add("app.kafka.defaults.concurrency=0");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "concurrency");
+                });
+    }
+
+    @Test
+    void shouldFailWhenDefaultsMaxPollRecordsNegative() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.defaults.max-poll-records=500");
+        props.add("app.kafka.defaults.max-poll-records=-1");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "maxPollRecords");
+                });
+    }
+
+    @Test
+    void shouldFailWhenConsumerTopicBlank() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.consumers.demo-message.topic=demo-topic");
+        props.add("app.kafka.consumers.demo-message.topic=");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "topic");
+                });
+    }
+
+    private List<String> baseProperties() {
+        List<String> props = new ArrayList<>();
+        props.add("app.kafka.defaults.group-id=kafka-integration-group");
+        props.add("app.kafka.defaults.auto-offset-reset=earliest");
+        props.add("app.kafka.defaults.concurrency=1");
+        props.add("app.kafka.defaults.auto-startup=true");
+        props.add("app.kafka.defaults.enable-auto-commit=true");
+        props.add("app.kafka.defaults.auto-commit-interval-ms=1000");
+        props.add("app.kafka.defaults.max-poll-interval-ms=300000");
+        props.add("app.kafka.defaults.max-poll-records=500");
+        props.add("app.kafka.defaults.log-events=false");
+
+        props.add("app.kafka.consumers.demo-message.topic=demo-topic");
+        props.add("app.kafka.consumers.user-created.topic=user-created-topic");
+        props.add("app.kafka.consumers.order-paid.topic=order-paid-topic");
+        props.add("app.kafka.consumers.inventory-adjusted.topic=inventory-adjusted-topic");
+        return props;
+    }
+
+    private BindValidationException getBindValidationFailure(Throwable failure) {
+        Throwable current = failure;
+        while (current != null) {
+            if (current instanceof BindValidationException bindValidationException) {
+                return bindValidationException;
+            }
+            current = current.getCause();
+        }
+        throw new AssertionError("Expected BindValidationException but got: " + failure);
+    }
+
+    private void assertHasFieldError(BindValidationException failure, String field) {
+        assertThat(failure.getValidationErrors().getAllErrors())
+                .filteredOn(error -> error instanceof FieldError)
+                .map(error -> ((FieldError) error).getField())
+                .contains(field);
+    }
+}

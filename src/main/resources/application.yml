@@ -8,51 +8,28 @@ spring:
 app:
   kafka:
     consumers-enabled: true
+    defaults:
+      group-id: kafka-integration-group
+      auto-offset-reset: earliest
+      concurrency: 1
+      auto-startup: true
+      enable-auto-commit: true
+      auto-commit-interval-ms: 1000
+      max-poll-interval-ms: 300000
+      max-poll-records: 500
+      log-events: false
     consumers:
       demo-message:
         topic: demo-topic
-        group-id: kafka-integration-group
-        auto-offset-reset: earliest
-        concurrency: 1
-        auto-startup: true
-        enable-auto-commit: true
-        auto-commit-interval-ms: 1000
-        max-poll-interval-ms: 300000
-        max-poll-records: 500
-        log-events: false
       user-created:
         topic: user-created-topic
-        group-id: kafka-integration-group
-        auto-offset-reset: earliest
-        concurrency: 1
-        auto-startup: true
-        enable-auto-commit: true
-        auto-commit-interval-ms: 1000
-        max-poll-interval-ms: 300000
-        max-poll-records: 500
-        log-events: false
       order-paid:
         topic: order-paid-topic
         group-id: billing-group
         auto-offset-reset: latest
-        concurrency: 1
-        auto-startup: true
-        enable-auto-commit: true
-        auto-commit-interval-ms: 1000
-        max-poll-interval-ms: 300000
-        max-poll-records: 500
-        log-events: false
       inventory-adjusted:
         topic: inventory-adjusted-topic
-        group-id: kafka-integration-group
-        auto-offset-reset: earliest
         concurrency: 2
-        auto-startup: true
-        enable-auto-commit: true
-        auto-commit-interval-ms: 1000
-        max-poll-interval-ms: 300000
-        max-poll-records: 500
-        log-events: false
     legacy:
       alpha:
         topic: legacy-a-topic
