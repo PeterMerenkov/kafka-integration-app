@@ -1,0 +1,24 @@
+# Maven
+target/
+
+# Local tools
+.tools/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.settings/
+.classpath
+.project
+
+# Build outputs
+out/
+bin/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,39 @@
+server:
+  port: 8080
+
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+app:
+  kafka:
+    consumers-enabled: true
+    producer-topic: demo-topic
+    defaults:
+      group-id: kafka-integration-group
+      auto-offset-reset: earliest
+      concurrency: 1
+      auto-startup: true
+      enable-auto-commit: true
+      auto-commit-interval-ms: 1000
+      max-poll-interval-ms: 300000
+      max-poll-records: 500
+      log-events: false
+    consumers:
+      demo-message:
+        topic: demo-topic
+      user-created:
+        topic: user-created-topic
+      order-paid:
+        topic: order-paid-topic
+        group-id: billing-group
+        auto-offset-reset: latest
+      inventory-adjusted:
+        topic: inventory-adjusted-topic
+        concurrency: 2
