@@ -2,6 +2,7 @@ package com.example.kafkaintegration.config;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.kafka.clients.CommonClientConfigs;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
@@ -21,16 +22,15 @@ public class KafkaClientConfig {
 
     @Bean
     public DefaultKafkaConsumerFactory<String, String> kafkaListenerConsumerFactory(
-            AppKafkaProperties appKafkaProperties,
-            KafkaConsumerDefaultsConfig defaults
+            KafkaDefaultProps defaultProps
     ) {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                String.join(",", appKafkaProperties.getBootstrapServers()));
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, defaults.getAutoOffsetReset());
+                String.join(",", defaultProps.getBootstrapServers()));
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, defaultProps.getConsumer().getAutoOffsetReset());
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
-        putSslProps(props, appKafkaProperties);
+        putSslProps(props, defaultProps);
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
@@ -45,9 +45,9 @@ public class KafkaClientConfig {
     }
 
     @Bean
-    public ProducerFactory<String, String> producerFactory(AppKafkaProperties appKafkaProperties) {
+    public ProducerFactory<String, String> producerFactory(KafkaDefaultProps defaultProps) {
         Map<String, Object> props = new HashMap<>();
-        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", appKafkaProperties.getBootstrapServers()));
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, String.join(",", defaultProps.getBootstrapServers()));
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         return new DefaultKafkaProducerFactory<>(props);
@@ -58,8 +58,8 @@ public class KafkaClientConfig {
         return new KafkaTemplate<>(producerFactory);
     }
 
-    private void putSslProps(Map<String, Object> props, AppKafkaProperties appKafkaProperties) {
-        AppKafkaProperties.SslProperties ssl = appKafkaProperties.getSsl();
+    private void putSslProps(Map<String, Object> props, KafkaDefaultProps defaultProps) {
+        KafkaDefaultProps.SslProps ssl = defaultProps.getSsl();
         if ("ssl".equalsIgnoreCase(ssl.getSecurityProtocol())) {
             return;
         }
@@ -76,7 +76,7 @@ public class KafkaClientConfig {
     }
 
     private void putIfPresent(Map<String, Object> props, String key, String value) {
-        if (!value.isBlank()) {
+        if (!StringUtils.isBlank(value)) {
             props.put(key, value);
         }
     }

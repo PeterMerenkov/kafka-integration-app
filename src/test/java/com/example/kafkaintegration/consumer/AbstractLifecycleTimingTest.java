@@ -27,7 +27,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
 @EmbeddedKafka(
         partitions = 1,
         topics = { "timing-topic" },
-        bootstrapServersProperty = "app.kafka.bootstrap-servers"
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 abstract class AbstractLifecycleTimingTest {
 

@@ -41,7 +41,7 @@ import org.springframework.test.context.ActiveProfiles;
 @EmbeddedKafka(
         partitions = 1,
         topics = { "demo-topic" },
-        bootstrapServersProperty = "app.kafka.bootstrap-servers"
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 class ParallelGroupConsumptionIntegrationTest {
 

@@ -1,7 +1,7 @@
 package com.example.kafkaintegration.consumer;
 
-import com.example.kafkaintegration.config.AppKafkaProperties;
 import com.example.kafkaintegration.config.KafkaConsumerProperties;
+import com.example.kafkaintegration.config.KafkaDefaultProps;
 import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
@@ -34,7 +34,7 @@ public class KafkaConsumerRegistrationService {
     private final List<CustomKafkaConsumer<?, ?>> consumers;
     private final ApplicationContext context;
     private final ObjectMapper objectMapper;
-    private final AppKafkaProperties appKafkaProperties;
+    private final KafkaDefaultProps defaultProps;
 
     private final Logger EVENTS_LOGGER = LoggerFactory.getLogger("kafka-events");
 
@@ -119,7 +119,7 @@ public class KafkaConsumerRegistrationService {
     private Map<String, Object> buildConsumerFactoryConfig(KafkaConsumerProperties config) {
         Map<String, Object> consumerFactoryConfig = new HashMap<>();
         consumerFactoryConfig.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                String.join(",", appKafkaProperties.getBootstrapServers()));
+                String.join(",", defaultProps.getBootstrapServers()));
         consumerFactoryConfig.put(ConsumerConfig.GROUP_ID_CONFIG, config.getGroupId());
         consumerFactoryConfig.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, config.isEnableAutoCommit());
         consumerFactoryConfig.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, config.getAutoOffsetReset());
@@ -135,7 +135,7 @@ public class KafkaConsumerRegistrationService {
     }
 
     private void putSslProps(Map<String, Object> consumerFactoryConfig) {
-        AppKafkaProperties.SslProperties ssl = appKafkaProperties.getSsl();
+        KafkaDefaultProps.SslProps ssl = defaultProps.getSsl();
         if (ssl == null) {
             return;
         }

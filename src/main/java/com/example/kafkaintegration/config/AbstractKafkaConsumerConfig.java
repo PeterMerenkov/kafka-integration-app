@@ -10,7 +10,7 @@ import org.springframework.validation.annotation.Validated;
 @Setter
 public abstract class AbstractKafkaConsumerConfig implements KafkaConsumerProperties {
 
-    private KafkaConsumerDefaultsConfig defaults;
+    private KafkaDefaultProps defaults;
 
     @Getter
     @NotBlank
@@ -26,52 +26,52 @@ public abstract class AbstractKafkaConsumerConfig implements KafkaConsumerProper
     private Boolean logEvents;
 
     @Autowired
-    public void setDefaults(KafkaConsumerDefaultsConfig defaults) {
+    public void setDefaults(KafkaDefaultProps defaults) {
         this.defaults = defaults;
     }
 
     @Override
     public String getGroupId() {
-        return groupId != null ? groupId : defaults.getGroupId();
+        return groupId != null ? groupId : defaults.getConsumer().getGroupId();
     }
 
     @Override
     public int getConcurrency() {
-        return concurrency != null ? concurrency : defaults.getConcurrency();
+        return concurrency != null ? concurrency : defaults.getConsumer().getConcurrency();
     }
 
     @Override
     public String getAutoOffsetReset() {
-        return autoOffsetReset != null ? autoOffsetReset : defaults.getAutoOffsetReset();
+        return autoOffsetReset != null ? autoOffsetReset : defaults.getConsumer().getAutoOffsetReset();
     }
 
     @Override
     public boolean isAutoStartup() {
-        return autoStartup != null ? autoStartup : defaults.getAutoStartup();
+        return autoStartup != null ? autoStartup : defaults.getConsumer().getAutoStartup();
     }
 
     @Override
     public boolean isEnableAutoCommit() {
-        return enableAutoCommit != null ? enableAutoCommit : defaults.getEnableAutoCommit();
+        return enableAutoCommit != null ? enableAutoCommit : defaults.getConsumer().getEnableAutoCommit();
     }
 
     @Override
     public int getAutoCommitIntervalMs() {
-        return autoCommitIntervalMs != null ? autoCommitIntervalMs : defaults.getAutoCommitIntervalMs();
+        return autoCommitIntervalMs != null ? autoCommitIntervalMs : defaults.getConsumer().getAutoCommitIntervalMs();
     }
 
     @Override
     public int getMaxPollIntervalMs() {
-        return maxPollIntervalMs != null ? maxPollIntervalMs : defaults.getMaxPollIntervalMs();
+        return maxPollIntervalMs != null ? maxPollIntervalMs : defaults.getConsumer().getMaxPollIntervalMs();
     }
 
     @Override
     public int getMaxPollRecords() {
-        return maxPollRecords != null ? maxPollRecords : defaults.getMaxPollRecords();
+        return maxPollRecords != null ? maxPollRecords : defaults.getConsumer().getMaxPollRecords();
     }
 
     @Override
     public boolean isLogEvents() {
-        return logEvents != null ? logEvents : defaults.getLogEvents();
+        return logEvents != null ? logEvents : defaults.getConsumer().getLogEvents();
     }
 }

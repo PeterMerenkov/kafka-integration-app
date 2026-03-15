@@ -32,7 +32,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
                 "legacy-b-topic",
                 "legacy-c-topic"
         },
-        bootstrapServersProperty = "app.kafka.bootstrap-servers"
+        bootstrapServersProperty = "spring.kafka.bootstrap-servers"
 )
 class LegacyAndRegistrarCoexistenceIntegrationTest {
 

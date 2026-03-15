@@ -3,25 +3,26 @@ server:
 
 app:
   kafka:
-    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
-    ssl:
-      security-protocol: PLAINTEXT
-      keystore-type:
-      keystore-location:
-      keystore-password:
-      truststore-type:
-      truststore-location:
-      truststore-password:
-    consumers-defaults:
-      group-id: kafka-integration-group
-      auto-offset-reset: earliest
-      concurrency: 1
-      auto-startup: true
-      enable-auto-commit: true
-      auto-commit-interval-ms: 1000
-      max-poll-interval-ms: 300000
-      max-poll-records: 500
-      log-events: false
+    defaults:
+      bootstrap-servers: ${spring.embedded.kafka.brokers:${spring.kafka.bootstrap-servers:localhost:9092,localhost:9093,localhost:9094}}
+      ssl:
+        security-protocol: PLAINTEXT
+        keystore-type:
+        keystore-location:
+        keystore-password:
+        truststore-type:
+        truststore-location:
+        truststore-password:
+      consumer:
+        group-id: kafka-integration-group
+        auto-offset-reset: earliest
+        concurrency: 1
+        auto-startup: true
+        enable-auto-commit: true
+        auto-commit-interval-ms: 1000
+        max-poll-interval-ms: 300000
+        max-poll-records: 500
+        log-events: false
     consumers:
       demo-message:
         topic: demo-topic
