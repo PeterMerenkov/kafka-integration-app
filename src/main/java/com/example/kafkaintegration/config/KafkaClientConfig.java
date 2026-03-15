@@ -27,7 +27,6 @@ public class KafkaClientConfig {
         Map<String, Object> props = new HashMap<>();
 
 
-
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
                 String.join(",", defaultProps.getBootstrapServers()));
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, defaultProps.getConsumer().getAutoOffsetReset());
