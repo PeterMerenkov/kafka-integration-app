@@ -18,7 +18,7 @@ class ConfigValidationTest {
     @Test
     void shouldFailWhenDefaultsGroupIdMissing() {
         List<String> props = baseProperties();
-        props.remove("app.kafka.defaults.group-id=kafka-integration-group");
+        props.remove("app.kafka.consumers-defaults.group-id=kafka-integration-group");
 
         contextRunner.withPropertyValues(props.toArray(String[]::new))
                 .run(context -> {
@@ -29,9 +29,23 @@ class ConfigValidationTest {
     }
 
     @Test
+    void shouldFailWhenBootstrapServersMissing() {
+        List<String> props = baseProperties();
+        props.remove("app.kafka.bootstrap-servers=localhost:9092");
+        props.add("app.kafka.bootstrap-servers=");
+
+        contextRunner.withPropertyValues(props.toArray(String[]::new))
+                .run(context -> {
+                    assertThat(context).hasFailed();
+                    BindValidationException failure = getBindValidationFailure(context.getStartupFailure());
+                    assertHasFieldError(failure, "bootstrapServers");
+                });
+    }
+
+    @Test
     void shouldFailWhenDefaultsAutoOffsetResetMissing() {
         List<String> props = baseProperties();
-        props.remove("app.kafka.defaults.auto-offset-reset=earliest");
+        props.remove("app.kafka.consumers-defaults.auto-offset-reset=earliest");
 
         contextRunner.withPropertyValues(props.toArray(String[]::new))
                 .run(context -> {
@@ -44,8 +58,8 @@ class ConfigValidationTest {
     @Test
     void shouldFailWhenDefaultsConcurrencyNonPositive() {
         List<String> props = baseProperties();
-        props.remove("app.kafka.defaults.concurrency=1");
-        props.add("app.kafka.defaults.concurrency=0");
+        props.remove("app.kafka.consumers-defaults.concurrency=1");
+        props.add("app.kafka.consumers-defaults.concurrency=0");
 
         contextRunner.withPropertyValues(props.toArray(String[]::new))
                 .run(context -> {
@@ -58,8 +72,8 @@ class ConfigValidationTest {
     @Test
     void shouldFailWhenDefaultsMaxPollRecordsNegative() {
         List<String> props = baseProperties();
-        props.remove("app.kafka.defaults.max-poll-records=500");
-        props.add("app.kafka.defaults.max-poll-records=-1");
+        props.remove("app.kafka.consumers-defaults.max-poll-records=500");
+        props.add("app.kafka.consumers-defaults.max-poll-records=-1");
 
         contextRunner.withPropertyValues(props.toArray(String[]::new))
                 .run(context -> {
@@ -85,20 +99,31 @@ class ConfigValidationTest {
 
     private List<String> baseProperties() {
         List<String> props = new ArrayList<>();
-        props.add("app.kafka.defaults.group-id=kafka-integration-group");
-        props.add("app.kafka.defaults.auto-offset-reset=earliest");
-        props.add("app.kafka.defaults.concurrency=1");
-        props.add("app.kafka.defaults.auto-startup=true");
-        props.add("app.kafka.defaults.enable-auto-commit=true");
-        props.add("app.kafka.defaults.auto-commit-interval-ms=1000");
-        props.add("app.kafka.defaults.max-poll-interval-ms=300000");
-        props.add("app.kafka.defaults.max-poll-records=500");
-        props.add("app.kafka.defaults.log-events=false");
+        props.add("app.kafka.bootstrap-servers=localhost:9092");
+        props.add("app.kafka.consumers-defaults.group-id=kafka-integration-group");
+        props.add("app.kafka.consumers-defaults.auto-offset-reset=earliest");
+        props.add("app.kafka.consumers-defaults.concurrency=1");
+        props.add("app.kafka.consumers-defaults.auto-startup=true");
+        props.add("app.kafka.consumers-defaults.enable-auto-commit=true");
+        props.add("app.kafka.consumers-defaults.auto-commit-interval-ms=1000");
+        props.add("app.kafka.consumers-defaults.max-poll-interval-ms=300000");
+        props.add("app.kafka.consumers-defaults.max-poll-records=500");
+        props.add("app.kafka.consumers-defaults.log-events=false");
 
         props.add("app.kafka.consumers.demo-message.topic=demo-topic");
         props.add("app.kafka.consumers.user-created.topic=user-created-topic");
         props.add("app.kafka.consumers.order-paid.topic=order-paid-topic");
         props.add("app.kafka.consumers.inventory-adjusted.topic=inventory-adjusted-topic");
+        props.add("app.kafka.consumers.parallel-group.topic=demo-topic");
+        props.add("app.kafka.legacy.alpha.topic=legacy-a-topic");
+        props.add("app.kafka.legacy.alpha.group-id=legacy-a-group");
+        props.add("app.kafka.legacy.alpha.concurrency=1");
+        props.add("app.kafka.legacy.beta.topic=legacy-b-topic");
+        props.add("app.kafka.legacy.beta.group-id=legacy-b-group");
+        props.add("app.kafka.legacy.beta.concurrency=1");
+        props.add("app.kafka.legacy.gamma.topic=legacy-c-topic");
+        props.add("app.kafka.legacy.gamma.group-id=legacy-c-group");
+        props.add("app.kafka.legacy.gamma.concurrency=1");
         return props;
     }
 

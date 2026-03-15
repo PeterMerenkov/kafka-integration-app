@@ -1,14 +1,18 @@
 server:
   port: 8080
 
-spring:
-  kafka:
-    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
-
 app:
   kafka:
-    consumers-enabled: true
-    defaults:
+    bootstrap-servers: localhost:9092,localhost:9093,localhost:9094
+    ssl:
+      security-protocol: PLAINTEXT
+      keystore-type:
+      keystore-location:
+      keystore-password:
+      truststore-type:
+      truststore-location:
+      truststore-password:
+    consumers-defaults:
       group-id: kafka-integration-group
       auto-offset-reset: earliest
       concurrency: 1

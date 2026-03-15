@@ -19,7 +19,7 @@ import org.springframework.kafka.test.context.EmbeddedKafka;
         topics = {
                 "demo-topic"
         },
-        bootstrapServersProperty = "spring.kafka.bootstrap-servers"
+        bootstrapServersProperty = "app.kafka.bootstrap-servers"
 )
 class CustomKafkaConsumerManualCommitIntegrationTest {
 

@@ -11,7 +11,7 @@ import org.springframework.validation.annotation.Validated;
 @Data
 @Configuration
 @Validated
-@ConfigurationProperties(prefix = "app.kafka.defaults")
+@ConfigurationProperties(prefix = "app.kafka.consumers-defaults")
 public class KafkaConsumerDefaultsConfig {
 
     @NotBlank
